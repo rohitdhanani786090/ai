@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Login Page with Gemini AI</title>
+    <title>Rohit.Dev_AI</title>
     <!-- Load Tailwind CSS from CDN for easy styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -294,7 +294,7 @@
                 let chatHistory = [];
                 chatHistory.push({ role: "user", parts: [{ text: prompt }] });
                 const payload = { contents: chatHistory };
-                const apiKey = ""; // Leave this as-is for Canvas to provide the API key
+                const apiKey = "AIzaSyDM15cPywybPt0xLdRb5c8vr3cK8y1CzTw"; // Leave this as-is for Canvas to provide the API key
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
@@ -305,20 +305,34 @@
 
                 const result = await response.json();
 
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
+                // Check for specific error details from the API
+                if (response.status !== 200) {
+                    let errorMessage = `Error ${response.status}: ${result.error?.message || 'Unknown API error.'}`;
+                    if (result.error?.details) {
+                        errorMessage += ` Details: ${JSON.stringify(result.error.details)}`;
+                    }
+                    geminiResponseDiv.textContent = `Error: ${errorMessage}`;
+                    showMessage(`Gemini AI request failed: ${response.status}`, 'error');
+                    console.error("Gemini API error response:", result);
+                } else if (result.candidates && result.candidates.length > 0 &&
+                           result.candidates[0].content && result.candidates[0].content.parts &&
+                           result.candidates[0].content.parts.length > 0) {
                     const text = result.candidates[0].content.parts[0].text;
                     geminiResponseDiv.textContent = text;
                     showMessage('Gemini AI response received!', 'success');
                 } else {
-                    geminiResponseDiv.textContent = 'Error: Could not get a valid response from Gemini AI.';
+                    // This block is for cases where the API call was 200 OK, but the response structure is unexpected
+                    let detailedError = 'Could not get a valid response from Gemini AI.';
+                    if (result.promptFeedback && result.promptFeedback.blockReason) {
+                        detailedError += ` Reason: ${result.promptFeedback.blockReason}. This might be due to content policy.`;
+                    }
+                    geminiResponseDiv.textContent = `Error: ${detailedError}`;
                     showMessage('Error: Gemini AI response failed.', 'error');
-                    console.error("Unexpected Gemini API response structure:", result);
+                    console.error("Unexpected Gemini API response structure (or content blocked):", result);
                 }
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
-                geminiResponseDiv.textContent = 'Error: Failed to connect to Gemini AI. Please try again.';
+                geminiResponseDiv.textContent = 'Error: Failed to connect to Gemini AI. Please check your network or try again later.';
                 showMessage('Error: Failed to connect to Gemini AI.', 'error');
             } finally {
                 loadingIndicator.style.display = 'none'; // Hide loading indicator
