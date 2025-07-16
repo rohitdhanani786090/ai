@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rohit.Dev_AI</title>
+    <title>Google Login Page with Gemini AI</title>
     <!-- Load Tailwind CSS from CDN for easy styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -30,6 +30,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            position: relative; /* For message box positioning */
         }
         .profile-display {
             background-color: #e0f2f7; /* Light blue background for profile info */
@@ -48,6 +49,7 @@
             height: 80px;
             object-fit: cover;
             border: 2px solid #3b82f6; /* Blue border */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for profile pic */
         }
         .sign-out-button {
             background-color: #ef4444; /* Red for sign out */
@@ -55,7 +57,7 @@
             padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s ease, transform 0.2s ease;
             font-weight: 600;
             border: none;
             width: fit-content;
@@ -63,11 +65,12 @@
         }
         .sign-out-button:hover {
             background-color: #dc2626;
+            transform: translateY(-2px); /* Slight lift on hover */
         }
         /* Custom message box styling */
         .message-box {
-            position: fixed;
-            top: 20px;
+            position: absolute; /* Changed to absolute for better positioning within container */
+            top: 20px; /* Adjusted position */
             left: 50%;
             transform: translateX(-50%);
             background-color: #4CAF50; /* Green for success */
@@ -78,6 +81,13 @@
             z-index: 1000;
             display: none; /* Hidden by default */
             font-weight: 500;
+            opacity: 0; /* For fade-in/out effect */
+            transition: opacity 0.3s ease-in-out;
+            min-width: 250px;
+            text-align: center;
+        }
+        .message-box.show {
+            opacity: 1;
         }
         .message-box.error {
             background-color: #f44336; /* Red for error */
@@ -91,29 +101,44 @@
             margin-top: 20px;
             width: 100%;
             box-sizing: border-box;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05); /* Inner shadow */
         }
         .gemini-ai-section textarea {
             width: 100%;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e1;
+            padding: 12px; /* Increased padding */
+            border-radius: 8px; /* More rounded corners */
+            border: 1px solid #a8c0d9; /* Slightly darker border */
             resize: vertical;
-            min-height: 80px;
+            min-height: 100px; /* Increased min-height */
             font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .gemini-ai-section textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); /* Focus ring */
         }
         .gemini-ai-section button {
             background-color: #3b82f6; /* Blue for send button */
             color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+            padding: 12px 25px; /* Increased padding */
+            border-radius: 8px; /* More rounded corners */
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
             font-weight: 600;
             border: none;
-            margin-top: 10px;
+            margin-top: 15px; /* Increased margin */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .gemini-ai-section button:hover {
             background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .gemini-ai-section button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .gemini-response {
             background-color: #e2e8f0; /* Light gray for response */
@@ -124,12 +149,34 @@
             white-space: pre-wrap; /* Preserve whitespace and line breaks */
             max-height: 300px; /* Limit height */
             overflow-y: auto; /* Add scroll if content overflows */
+            border: 1px solid #cbd5e1;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            font-size: 15px;
+            line-height: 1.6;
+            color: #333;
         }
         .loading-indicator {
-            display: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin-top: 10px;
             color: #3b82f6;
             font-style: italic;
+            font-weight: 500;
+        }
+        .loading-indicator::before {
+            content: '';
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -170,7 +217,7 @@
                 <h3 class="text-xl font-semibold text-gray-700 mb-3">Chat with Gemini AI</h3>
                 <textarea id="gemini-prompt-input" placeholder="Ask me anything..." class="rounded-md"></textarea>
                 <button onclick="sendGeminiPrompt()" class="rounded-md">Send to Gemini</button>
-                <div id="gemini-loading" class="loading-indicator">Loading...</div>
+                <div id="gemini-loading" class="loading-indicator"></div>
                 <div id="gemini-response" class="gemini-response rounded-md"></div>
             </div>
         </div>
@@ -194,11 +241,16 @@
             if (type === 'error') {
                 messageBox.classList.add('error');
             }
+            // Add 'show' class for fade-in effect
+            messageBox.classList.add('show');
             messageBox.style.display = 'block';
 
             setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 3000); // Hide after 3 seconds
+                messageBox.classList.remove('show'); // Remove 'show' class for fade-out
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300); // Wait for fade-out transition to complete before hiding
+            }, 3000); // Display for 3 seconds
         }
 
         // This function is called when the Google Sign-In button is clicked and a response is received.
@@ -287,7 +339,8 @@
                 return;
             }
 
-            loadingIndicator.style.display = 'block'; // Show loading indicator
+            loadingIndicator.style.display = 'flex'; // Show loading indicator with flex for spinner
+            loadingIndicator.textContent = 'Loading...'; // Set text content for accessibility
             geminiResponseDiv.textContent = ''; // Clear previous response
 
             try {
@@ -342,6 +395,13 @@
         // Ensure the Google Identity Services library is loaded and initialized
         window.onload = function () {
             console.log("Page loaded. Google Identity Services should be initializing.");
+            // Add event listener for Enter key in the textarea
+            document.getElementById('gemini-prompt-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) { // Check for Enter key without Shift
+                    e.preventDefault(); // Prevent new line
+                    sendGeminiPrompt(); // Call the function to send prompt
+                }
+            });
         };
     </script>
 </body>
